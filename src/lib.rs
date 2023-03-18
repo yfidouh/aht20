@@ -5,6 +5,8 @@
 //! [`embedded-hal`]: https://docs.rs/embedded-hal/~0.2
 //! [AHT10 crate]: https://github.com/heyitsanthony/aht10
 
+
+mod aht20 {
 #![deny(missing_docs)]
 #![no_std]
 
@@ -84,27 +86,21 @@ impl Temperature {
 }
 
 /// AHT20 driver.
-pub struct Aht20<I2C, D> {
+pub struct Aht20<I2C> {
     i2c: I2C,
-    delay: D,
 }
 
-impl<I2C, D, E> Aht20<I2C, D>
+impl<I2C, E> Aht20<I2C>
 where
     I2C: WriteRead<Error = E> + Write<Error = E>,
-    D: DelayMs<u16>,
 {
     /// Creates a new AHT20 device from an I2C peripheral and a Delay.
-    pub fn new(i2c: I2C, delay: D) -> Result<Self, Error<E>> {
+    pub fn new(i2c: I2C, delay: &mut impl DelayMs<u16>) -> Result<Self, Error<E>> {
         let mut dev = Self {
-            i2c: i2c,
-            delay: delay,
+            i2c: i2c
         };
-
-        dev.reset()?;
-
-        dev.calibrate()?;
-
+        dev.reset(delay)?;
+        dev.calibrate(delay)?;
         Ok(dev)
     }
 
@@ -117,13 +113,13 @@ where
     }
 
     /// Self-calibrate the sensor.
-    pub fn calibrate(&mut self) -> Result<(), Error<E>> {
+    pub fn calibrate(&mut self, delay: &mut impl DelayMs<u16>) -> Result<(), Error<E>> {
         // Send calibrate command
         self.i2c.write(I2C_ADDRESS, &[0xE1, 0x08, 0x00])?;
 
         // Wait until not busy
         while self.status()?.contains(StatusFlags::BUSY) {
-            self.delay.delay_ms(10);
+            delay.delay_ms(10);
         }
 
         // Confirm sensor is calibrated
@@ -135,18 +131,18 @@ where
     }
 
     /// Soft resets the sensor.
-    pub fn reset(&mut self) -> Result<(), E> {
+    pub fn reset(&mut self, delay: &mut impl DelayMs<u16>) -> Result<(), E> {
         // Send soft reset command
         self.i2c.write(I2C_ADDRESS, &[0xBA])?;
 
         // Wait 20ms as stated in specification
-        self.delay.delay_ms(20);
+        delay.delay_ms(20);
 
         Ok(())
     }
 
     /// Reads humidity and temperature.
-    pub fn read(&mut self) -> Result<(Humidity, Temperature), Error<E>> {
+    pub fn read(&mut self, delay: &mut impl DelayMs<u16>) -> Result<(Humidity, Temperature), Error<E>> {
         lazy_static! {
             static ref CRC: CrcAlgo<u8> = CrcAlgo::<u8>::new(49, 8, 0xFF, 0x00, false);
         }
@@ -156,7 +152,7 @@ where
 
         // Wait until not busy
         while self.status()?.contains(StatusFlags::BUSY) {
-            self.delay.delay_ms(10);
+            delay.delay_ms(10);
         }
 
         // Read in sensor data
@@ -182,4 +178,6 @@ where
 
         Ok((Humidity { h: hum }, Temperature { t: temp }))
     }
+}
+
 }

@@ -1,7 +1,9 @@
 //! Linux I2C Demo
-
+#[path = "../src/lib.rs"] // Here
+use aht20;
 use {
-    aht20::*,
+    // aht20::*,
+
     embedded_hal::blocking::delay::DelayMs,
     linux_embedded_hal as hal,
     std::{env, process},
@@ -16,10 +18,12 @@ fn main() {
 
     let i2c = hal::I2cdev::new(&args[1]).unwrap();
 
-    let mut dev = Aht20::new(i2c, hal::Delay).unwrap();
+    let mut delay = hal::Delay as DelayMs<u16>;
+
+    let mut dev = Aht20::new(i2c, delay).unwrap();
 
     loop {
-        let (h, t) = dev.read().unwrap();
+        let (h, t) = dev.read(delay).unwrap();
 
         println!(
             "relative humidity={0}%; temperature={1}C",
