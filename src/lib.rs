@@ -24,6 +24,7 @@ const I2C_ADDRESS: u8 = 0x38;
 
 bitflags! {
     struct StatusFlags: u8 {
+        const UNKOWN = 0;
         const BUSY = (1 << 7);
         const MODE = ((1 << 6) | (1 << 5));
         const CRC = (1 << 4);
