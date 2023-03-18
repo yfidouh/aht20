@@ -43,6 +43,9 @@ pub enum Error<E> {
     Bus(E),
     /// Checksum mismatch.
     Checksum,
+
+    /// Max Tries Exceeded.
+    MaxTriesExceeded,
 }
 
 impl<E> core::convert::From<E> for Error<E> {
@@ -117,9 +120,15 @@ where
         // Send calibrate command
         self.i2c.write(I2C_ADDRESS, &[0xE1, 0x08, 0x00])?;
 
-        // Wait until not busy
+        // Wait until not busy or max tries exceeded
+        let mut max_tries = 10u8;
         while self.status()?.contains(StatusFlags::BUSY) {
             delay.delay_ms(10);
+            max_tries -= 1;
+
+            if max_tries == 0 {
+                return Err(Error::Uncalibrated);
+            }
         }
 
         // Confirm sensor is calibrated
@@ -150,9 +159,17 @@ where
         // Send trigger measurement command
         self.i2c.write(I2C_ADDRESS, &[0xAC, 0x33, 0x00])?;
 
-        // Wait until not busy
-        while self.status()?.contains(StatusFlags::BUSY) {
+
+        
+        // Wait until not busy or max tries exceeded
+        let mut max_tries = 5u8;
+        while self.status()?.contains(StatusFlags::BUSY) || max_tries == 0 {
             delay.delay_ms(10);
+            max_tries -= 1;
+        }
+
+        if max_tries == 0 {
+            return Err(Error::MaxTriesExceeded);
         }
 
         // Read in sensor data
