@@ -6,7 +6,7 @@
 //! [AHT10 crate]: https://github.com/heyitsanthony/aht10
 
 
-mod aht20 {
+
 #![deny(missing_docs)]
 #![no_std]
 
@@ -180,4 +180,3 @@ where
     }
 }
 
-}
